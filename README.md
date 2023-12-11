@@ -19,7 +19,7 @@ Both approaches are supported by Python scripts for training Keras models and C/
 
 - **Python Scripts**: For training Keras models, converting them to TensorFlow Lite, and then to TensorFlow Lite Micro format.
 - **C/C++ Code**: For deploying the models on hardware platforms supported by TFLM.
-- **Custom Board Compatibility**: Tested on a board powered by the nRF52840 microcontroller.
+- **Custom Board Compatibility**: Tested on a board powered by the nRF52840 microcontroller. Should work on Nano 33 BLE / Sense board. 
 
 Visit [TensorFlow Lite for Microcontrollers](https://www.tensorflow.org/lite/microcontrollers#supported_platforms) for more information on supported platforms.
 
