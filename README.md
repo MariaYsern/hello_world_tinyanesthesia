@@ -41,3 +41,6 @@ The project consists of two primary steps:
     - Deploy the converted models on Arduino using the provided C/C++ files.
 
 Instructions for each step are provided within the respective directories, along with necessary scripts and deployment files.
+
+Feel free to open a Issue thread or start a discussion on this GitHub Repository. 
+See you !
