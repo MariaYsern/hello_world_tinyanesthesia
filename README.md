@@ -42,5 +42,5 @@ The project consists of two primary steps:
 
 Instructions for each step are provided within the respective directories, along with necessary scripts and deployment files.
 
-Feel free to open a Issue thread or start a discussion on this GitHub Repository. 
+For any inquiries or discussions, please feel free to contact me (CS249), open an issue, or start a discussion right here on this GitHub Repository. We welcome your contributions and look forward to collaborating.
 See you !
