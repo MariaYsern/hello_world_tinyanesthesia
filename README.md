@@ -1,6 +1,6 @@
 # Hello World of Tiny Anesthesia
 
-Welcome to our repository! Here, we showcase a proof of concept for running machine learning models on custom hardware, specifically designed for on-device inference of brain data. This project is part of a groundbreaking approach in the field of tiny machine learning (tinyML) and neuroscience, focusing on the classification of anesthesia levels in local field potentials (LFP).
+Welcome to our repository! Here, we showcase a proof of concept for running machine learning models on custom hardware, specifically designed for on-device inference of brain data. This project is merges the field of tiny machine learning (tinyML) and neuroscience, focusing on the classification of anesthesia levels in local field potentials (LFP).
 
 For more information about TinyML and many more related projects check out the following resources: 
 - [Harvard CS249r Course](https://scholar.harvard.edu/vijay-janapa-reddi/classes/cs249r-tinyml)
