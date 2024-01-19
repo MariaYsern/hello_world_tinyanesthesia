@@ -5,6 +5,8 @@
 
 #include "Arduino.h"
 #include "constants.h"
+#include "output_handler.h"
+#include "tensorflow/lite/micro/micro_log.h"
 
 // The pin of the Arduino's built-in LED
 int led = LED_BUILTIN;
@@ -13,8 +15,7 @@ int led = LED_BUILTIN;
 bool initialized = false;
 
 // Animates a dot across the screen to represent the current x and y values
-void HandleOutput(tflite::ErrorReporter* error_reporter, float x_value,
-                  float y_value) {
+void HandleOutput(float x_value, float y_value) {
   // Do this only once
   if (!initialized) {
     // Set the LED pin to output
@@ -26,10 +27,15 @@ void HandleOutput(tflite::ErrorReporter* error_reporter, float x_value,
   // and y=1 is fully on. The LED's brightness can range from 0-255.
   int brightness = (int)(127.5f * (y_value + 1));
 
+  // The y value is not actually constrained to the range [-1, 1], so we need to
+  // clamp the brightness value before sending it to the PWM/LED.
+  int brightness_clamped = std::min(255, std::max(0, brightness));
+
   // Set the brightness of the LED. If the specified pin does not support PWM,
   // this will result in the LED being on when y > 127, off otherwise.
   analogWrite(led, brightness);
 
   // Log the current brightness value for display in the Arduino plotter
-  TF_LITE_REPORT_ERROR(error_reporter, "%d\n", brightness);
+  MicroPrintf("%d\n", brightness);
+  delay(33);
 }

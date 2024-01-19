@@ -9,11 +9,11 @@
 #include "tensorflow/lite/micro/all_ops_resolver.h"
 #include "constants.h"
 #include "model.h"
+#include "input_vector.h"
 #include "output_handler.h"
-#include "tensorflow/lite/micro/micro_error_reporter.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
+#include "tensorflow/lite/micro/micro_log.h"
 #include "tensorflow/lite/schema/schema_generated.h"
-#include "tensorflow/lite/version.h"
 
 // Globals, used for compatibility with Arduino-style sketches.
 namespace {
@@ -25,223 +25,22 @@ TfLiteTensor* output = nullptr;
 int inference_count = 0;
 constexpr int kTensorArenaSize = 150 * 1024;
 uint8_t tensor_arena[kTensorArenaSize];
+const int window_length = 200;
+const int num_windows = input_vector_length / window_length;
 }
 
 
-const int length_data = 200;  //
-int vector_data[length_data] = {
-  72,
-  80,
-  70,
-  59,
-  54,
-  -2,
-  -47,
-  -72,
-  -49,
-  -27,
-  -49,
-  -77,
-  -83,
-  -32,
-  22,
-  62,
-  90,
-  68,
-  16,
-  -48,
-  -47,
-  -11,
-  -13,
-  -22,
-  -10,
-  21,
-  -28,
-  -93,
-  -73,
-  -3,
-  65,
-  63,
-  17,
-  -21,
-  -34,
-  -32,
-  -33,
-  2,
-  45,
-  43,
-  39,
-  47,
-  2,
-  3,
-  4,
-  5,
-  6,
-  7,
-  8,
-  9,
-  72,
-  80,
-  70,
-  59,
-  54,
-  -2,
-  -47,
-  -72,
-  -49,
-  -27,
-  -49,
-  -77,
-  -83,
-  -32,
-  22,
-  62,
-  90,
-  68,
-  16,
-  -48,
-  -47,
-  -11,
-  -13,
-  -22,
-  -10,
-  21,
-  -28,
-  -93,
-  -73,
-  -3,
-  65,
-  63,
-  17,
-  -21,
-  -34,
-  -32,
-  -33,
-  2,
-  45,
-  43,
-  39,
-  47,
-  2,
-  3,
-  4,
-  5,
-  6,
-  7,
-  8,
-  9,
-  72,
-  80,
-  70,
-  59,
-  54,
-  -2,
-  -47,
-  -72,
-  -49,
-  -27,
-  -49,
-  -77,
-  -83,
-  -32,
-  22,
-  62,
-  90,
-  68,
-  16,
-  -48,
-  -47,
-  -11,
-  -13,
-  -22,
-  -10,
-  21,
-  -28,
-  -93,
-  -73,
-  -3,
-  65,
-  63,
-  17,
-  -21,
-  -34,
-  -32,
-  -33,
-  2,
-  45,
-  43,
-  39,
-  47,
-  2,
-  3,
-  4,
-  5,
-  6,
-  7,
-  8,
-  9,
-  72,
-  80,
-  70,
-  59,
-  54,
-  -2,
-  -47,
-  -72,
-  -49,
-  -27,
-  -49,
-  -77,
-  -83,
-  -32,
-  22,
-  62,
-  90,
-  68,
-  16,
-  -48,
-  -47,
-  -11,
-  -13,
-  -22,
-  -10,
-  21,
-  -28,
-  -93,
-  -73,
-  -3,
-  65,
-  63,
-  17,
-  -21,
-  -34,
-  -32,
-  -33,
-  2,
-  45,
-  43,
-  39,
-  47,
-  2,
-  3,
-  4,
-  5,
-  6,
-  7,
-  8,
-  9,
-};  // dummy data
-
-
 void setup() {
-
-  static tflite::MicroErrorReporter micro_error_reporter;
-  error_reporter = &micro_error_reporter;
+  // static tflite::MicroErrorReporter micro_error_reporter;
+  // error_reporter = &micro_error_reporter;
 
   model = tflite::GetModel(g_model);
 
   if (model->version() != TFLITE_SCHEMA_VERSION) {
-    TF_LITE_REPORT_ERROR(error_reporter, "Model version does not match Schema version");
+    MicroPrintf(
+        "Model provided is schema version %d not equal "
+        "to supported version %d.",
+        model->version(), TFLITE_SCHEMA_VERSION);
     return;
   }
 
@@ -251,13 +50,13 @@ void setup() {
 
   // Build an interpreter to run the model with.
   static tflite::MicroInterpreter static_interpreter(
-    model, resolver, tensor_arena, kTensorArenaSize, error_reporter);
+    model, resolver, tensor_arena, kTensorArenaSize);
   interpreter = &static_interpreter;
 
   // Allocate memory from the tensor_arena for the model's tensors.
   TfLiteStatus allocate_status = interpreter->AllocateTensors();
   if (allocate_status != kTfLiteOk) {
-    TF_LITE_REPORT_ERROR(error_reporter, "AllocateTensors() failed");
+    MicroPrintf("AllocateTensors() failed");
     return;
   }
 
@@ -267,9 +66,10 @@ void setup() {
 }
 
 void loop() {
+  Serial.println("-----------START-----------");
   Serial.print("Dim 1 size input: ");
   Serial.println(input->dims->data[0]);
-  Serial.print("Dim 2 size inputs: ");
+  Serial.print("Dim 2 size input: ");
   Serial.println(input->dims->data[1]);
   Serial.print("Dim 1 size output: ");
   Serial.println(output->dims->data[0]);
@@ -281,34 +81,60 @@ void loop() {
   // Dim 2 size inputs: 200
   // Dim 1 size output: 1
   // Dim 2 size output: 3
-
-  Serial.print("Input:");
-  for (int i = 0; i < length_data; ++i) {
-    reinterpret_cast<float*>(input->data.raw)[i] = static_cast<float>(vector_data[i]);
-    Serial.print(reinterpret_cast<float*>(input->data.raw)[i]);
-    Serial.print(", ");
-  }
-  Serial.println("");
-
-
-  // Run inference on model 1
-  if (interpreter->Invoke() != kTfLiteOk) {
-    TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed for model 1");
-    return;
-  }
-
-  // Process output from model 1
-  for (int i = 0; i < output->dims->data[1]; ++i) {
-    Serial.print("Model Output [");
+  float accuracy = 0;
+  for (int i = 0; i < num_windows; ++i) {
+    int start_index = i * window_length;
+    int end_index = (i + 1) * window_length;
+    int correct_label = labels_vector[i];
+    
+    Serial.print("Sample ");
     Serial.print(i);
-    Serial.print("]: ");
-    Serial.print(reinterpret_cast<float*>(output->data.raw)[i]);
-    if (i != 2) {
-      Serial.print(", ");
+    Serial.print(" of ");
+    Serial.print(num_windows);
+    Serial.print(". Correct label: ");
+    Serial.print(correct_label);
+    
+    // Insert windowed input to input tensor
+    for (int j = start_index; j < end_index; ++j) {
+      reinterpret_cast<float*>(input->data.raw)[j] = static_cast<float>(input_vector_data[j]);
     }
+
+    // Run inference on model 1
+    if (interpreter->Invoke() != kTfLiteOk) {
+      MicroPrintf("Invoke failed for model 1");
+      return;
+    }
+
+    // Process output from model 1
+    Serial.print(". Predicted label: (");
+    float max_value = 0;
+    int max_position = 0;
+    for (int i = 0; i < output->dims->data[1]; ++i) {
+      Serial.print(reinterpret_cast<float*>(output->data.raw)[i]);
+      if (i < output->dims->data[1] - 1) {
+        Serial.print(", ");
+      } else {
+        Serial.print(") = ");
+      }
+      
+      if (reinterpret_cast<float*>(output->data.raw)[i] > max_value) {
+        max_value = reinterpret_cast<float*>(output->data.raw)[i];
+        max_position = i;
+      }
+    }
+    if (max_position == correct_label) {
+      accuracy = accuracy + 1;
+    }
+    Serial.println(max_position);
   }
-  Serial.println(" ");
+  float acc_score = accuracy / num_windows;
+  Serial.print("Accuracy score = ");
+  Serial.print(accuracy);
+  Serial.print("/");
+  Serial.print(num_windows);
+  Serial.print("=");
+  Serial.println(acc_score);
+  Serial.println("-----------END-----------");
 
-
-  delay(2000);  // Example delay
+  delay(120000);  // Example delay
 }
